@@ -87,7 +87,7 @@ function [e,Jr,Jl] = bearingErrorAndJacobian(Xr,Xl,z)
     J_r(1:2,1:2) = -R';
     J_r(1:2,3) = (R')*Rdot_0'*Xl;
     J_l = R';
-    J_k = J_atan2(p_hat);
+    J_k = 1./(p_hat(1:2)'*p_hat(1:2))*[-p_hat(2),p_hat(1)];
     Jr = J_k*J_r;
     Jl = J_k*J_l;
 endfunction
