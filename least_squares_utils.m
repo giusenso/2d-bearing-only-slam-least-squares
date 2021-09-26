@@ -94,7 +94,16 @@ endfunction
 
 %==============================================================================
 
-function [H,b,chi_tot] = posesLinearSys(XR, XL, ZR, ass_ZR, kernel_threshold)
+#   input:
+#       XR: robot poses matrix (3 x 3 x num_poses)
+#       XL: landmark positions matrix (2 x num_landmarks)
+#       ZR: pose measurements matrix (3 x 3 x num_pose_meaurements)
+#       ass_ZR: relate consecutive measurements (2 x num_pose_meaurements)
+#   output:
+#       H: matrix of the linear system (3*num_poses+2*num_landmarks x 3*num_poses+2*num_landmarks)
+#       b: vector of the linear system (3*num_poses+2*num_landmarks x 1)
+#       chi: error measure (scalar)
+function [H,b,chi] = posesLinearSys(XR, XL, ZR, ass_ZR)
     global pose_dim;
     global landmark_dim;
     num_poses = size(XR,3);
@@ -102,7 +111,7 @@ function [H,b,chi_tot] = posesLinearSys(XR, XL, ZR, ass_ZR, kernel_threshold)
     system_size = pose_dim*num_poses + landmark_dim*num_landmarks;
     H = zeros(system_size,system_size);
     b = zeros(system_size,1);
-    chi_tot = 0;
+    chi = 0;
     num_measurements = size(ZR,3);
     for (i = 1:num_measurements)
         omega = eye(6);
@@ -110,7 +119,7 @@ function [H,b,chi_tot] = posesLinearSys(XR, XL, ZR, ass_ZR, kernel_threshold)
         poseA_id = ass_ZR(1,i);
         poseB_id = ass_ZR(2,i);
         [e,Ja,Jb] = poseErrorAndJacobian(XR(:,:,poseA_id), XR(:,:,poseB_id), ZR(:,:,i));
-        chi_tot = chi_tot + (e')*omega*e;
+        chi = chi + (e')*omega*e;
 
         POSE_A_ID = poseMatrixIndex(poseA_id, num_poses, num_landmarks);
         POSE_B_ID = poseMatrixIndex(poseB_id, num_poses, num_landmarks);
@@ -131,7 +140,17 @@ endfunction
 
 %==============================================================================
 
-function [H,b,chi_tot] = landmarkLinearSys(XR,XL,ZL,associations_ZL,kernel_threshold)
+#   input:
+#       XR: robot poses matrix (3 x 3 x num_poses)
+#       XL: landmark positions matrix (2 x num_landmarks)
+#       ZL: landmark measurements matrix (1 x num_landmark_meaurements)
+#       ass_ZL: relate landmark measurements matrix to
+#               pose measurements and landmark id (2 x num_landmark_meaurements)
+#   output:
+#       H: matrix of the linear system (3*num_poses+2*num_landmarks x 3*num_poses+2*num_landmarks)
+#       b: vector of the linear system (3*num_poses+2*num_landmarks x 1)
+#       chi: error measure (scalar)
+function [H,b,chi] = landmarkLinearSys(XR,XL,ZL,ass_ZL)
     global system_size;
     global pose_dim;
     global landmark_dim;
@@ -140,15 +159,15 @@ function [H,b,chi_tot] = landmarkLinearSys(XR,XL,ZL,associations_ZL,kernel_thres
     num_measurements = size(ZL,2);
     H = zeros(system_size,system_size);
     b = zeros(system_size,1);
-    chi_tot = 0;
+    chi = 0;
     for i = 1:num_measurements
-        pose_index = associations_ZL(1,i);
-        landmark_index = associations_ZL(2,i);
+        pose_index = ass_ZL(1,i);
+        landmark_index = ass_ZL(2,i);
         Xr = XR(:,:,pose_index);
         Xl = XL(:,landmark_index);
         z = ZL(1,i);
         [e,Jr,Jl] = bearingErrorAndJacobian(Xr,Xl,z);
-        chi_tot = chi_tot + (e')*e;
+        chi = chi + (e')*e;
 
         POSE_ID = poseMatrixIndex(pose_index, num_poses, num_landmarks);
         LANDMARK_ID = landmarkMatrixIndex(landmark_index, num_poses, num_landmarks);
@@ -164,5 +183,54 @@ function [H,b,chi_tot] = landmarkLinearSys(XR,XL,ZL,associations_ZL,kernel_thres
 
         b(POSE_ID:POSE_ID+pose_dim-1) += (Jr')*e;
         b(LANDMARK_ID:LANDMARK_ID+landmark_dim-1) += (Jl')*e;
+    endfor
+endfunction
+
+
+
+%==============================================================================
+%:::::::::::::::: Least Square for Bearing-only SLAM ::::::::::::::::::::::::::
+%==============================================================================
+
+#   Implementation of Gauss-Newton algorithm solving the least squares problem
+#
+#   input:
+#       XR: robot poses matrix (3 x 3 x num_poses)
+#       XL: landmark positions matrix (2 x num_landmarks)
+#       ZR: measurements matrix (3 x 3 x num_meaurements)
+#       ass_ZR: relate consecutive measurements (2 x num_pose_meaurements)
+#       ZL: landmark measurements matrix (1 x num_landmark_meaurements)
+#       ass_ZL: relate landmark measurements matrix to
+#               pose measurements and landmark id (2 x num_landmark_meaurements)
+#       num_iterations: number of iterations of the algorithm
+#       damping_coeff: damping coefficient (not sure if use it or not)
+#   output:
+#       XR: improved robot poses matrix(3 x 3 x num_poses)
+#       XL: improved landmark positions matrix (2 x num_landmarks)
+#       chi_r: error measure for poses(scalar)
+#       chi_l: error measure for landmarks(scalar)
+#       ... something else ??
+
+function [XR, XL, chi_r, chi_l] = ...
+GaussNewtonAlgorithm(XR,XL,ZL,ZR,ass_ZR,ass_ZL,num_iterations,damping_coeff)
+    global pose_dim;
+    global num_poses;
+    global num_landmarks;
+    global system_size;
+    chi_l = zeros(1,num_iterations);
+    chi_r = zeros(1,num_iterations);
+    for (i = 1:num_iterations)
+        [Hr, br, chi_r(i)] = poseLinearSys(XR, XL, ZR, ass_ZR);
+        [Hl, bl, chi_l(i)] = landmarkLinearSys(XR,XL,ZL,ass_ZL);
+        b = br + bl;
+        H = Hr + Hl + eye(system_size,system_size)*damping_coeff;   % damping: not sure if use it or not
+        dX = zeros(system_size,1);
+	    H((num_poses-1)*pose_dim+1:num_poses*pose_dim, :) = [];
+        H(:, (num_poses-1)*pose_dim+1:num_poses*pose_dim) = [];
+        b((num_poses-1)*pose_dim+1:num_poses*pose_dim) = [];
+        dX = H\(-b);
+	    dX = [dX(1:(num_poses-1)*pose_dim); zeros(pose_dim,1); dX((num_poses-1)*pose_dim+1:end)];
+        [XR, XL] = boxPlus(XR, XL, num_poses, num_landmarks, dX);
+        fprintf("\n|--> iteration %d: chi=%f",i,chi_r(i));
     endfor
 endfunction
