@@ -166,3 +166,4 @@ function [H,b,chi_tot] = landmarkLinearSys(XR,XL,ZL,associations_ZL,kernel_thres
         b(POSE_ID:POSE_ID+pose_dim-1) += (Jr')*e;
         b(LANDMARK_ID:LANDMARK_ID+landmark_dim-1) += (Jl')*e;
     endfor
+endfunction
