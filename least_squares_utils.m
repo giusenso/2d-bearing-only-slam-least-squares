@@ -105,27 +105,27 @@ function [H,b,chi_tot] = posesLinearSys(XR, XL, ZR, ass_ZR, kernel_threshold)
     chi_tot = 0;
     num_measurements = size(ZR,3);
     for (i = 1:num_measurements)
-        Omega = eye(6);
-        Omega(1:4,1:4) = (1e-5)*Omega(1:4,1:4);
+        omega = eye(6);
+        omega(1:4,1:4) = (1e-6)*omega(1:4,1:4);
         poseA_id = ass_ZR(1,i);
         poseB_id = ass_ZR(2,i);
         [e,Ja,Jb] = poseErrorAndJacobian(XR(:,:,poseA_id), XR(:,:,poseB_id), ZR(:,:,i));
-        chi_tot = chi_tot + e'*Omega*e;
+        chi_tot = chi_tot + (e')*omega*e;
 
         POSE_A_ID = poseMatrixIndex(poseA_id, num_poses, num_landmarks);
         POSE_B_ID = poseMatrixIndex(poseB_id, num_poses, num_landmarks);
 
         H(POSE_A_ID:POSE_A_ID+pose_dim-1, POSE_A_ID:POSE_A_ID+pose_dim-1) += ...
-        (Ja')*Omega*Ja;
+        (Ja')*omega*Ja;
         H(POSE_A_ID:POSE_A_ID+pose_dim-1, POSE_B_ID:POSE_B_ID+pose_dim-1) += ...
-        (Ja')*Omega*Jb;
+        (Ja')*omega*Jb;
         H(POSE_B_ID:POSE_B_ID+pose_dim-1, POSE_A_ID:POSE_A_ID+pose_dim-1) += ...
-        (Jb')*Omega*Ja;
+        (Jb')*omega*Ja;
         H(POSE_B_ID:POSE_B_ID+pose_dim-1, POSE_B_ID:POSE_B_ID+pose_dim-1) += ...
-        (Jb')*Omega*Jb;
+        (Jb')*omega*Jb;
 
-        b(POSE_A_ID:POSE_A_ID+pose_dim-1) += (Ja')*Omega*e;
-        b(POSE_B_ID:POSE_B_ID+pose_dim-1) += (Jb')*Omega*e;
+        b(POSE_A_ID:POSE_A_ID+pose_dim-1) += (Ja')*omega*e;
+        b(POSE_B_ID:POSE_B_ID+pose_dim-1) += (Jb')*omega*e;
     endfor
 endfunction
 
@@ -141,7 +141,6 @@ function [H,b,chi_tot] = landmarkLinearSys(XR,XL,ZL,associations_ZL,kernel_thres
     H = zeros(system_size,system_size);
     b = zeros(system_size,1);
     chi_tot = 0;
-    chi = 0;
     for i = 1:num_measurements
         pose_index = associations_ZL(1,i);
         landmark_index = associations_ZL(2,i);
