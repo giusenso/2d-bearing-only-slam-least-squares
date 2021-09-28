@@ -1,0 +1,30 @@
+G2oWrapper for Octave
+
+-- it runs on Octave. I've said octave, not Matlab.
+
+--IMPLEMENTED:
+- loader for *.g2o file (loadG2o.m). It returns 4 Struct-Array(Landmark, Poses, Transitions, Observations)
+they can be accessed by classical octave indexing, e.g.:
+
+[land, pose, trans, obs] = loadG2o('file.g2o');
+land(i)
+
+moreover, you can access the single fields of the struct, e.g.:
+
+land(i).x
+
+will return you the x-coord of the i-th landmark.
+In case you want to search for a particular index in poses or landmarks vector,
+you can use the function 'searchById', e.g.:
+
+l_index = 12;
+desired_landmark = searchById(landmarks, l_index);
+
+--TODO:
+- ...ideas for other utilities
+
+--------------------------------
+Bartolomeo Della Corte
+'Research Assistant'
+Sapienza, University of Rome
+--------------------------------
