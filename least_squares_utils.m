@@ -4,6 +4,18 @@
 %:::::::: UTILITIES for LEAST SQUARES :::::::::::::::::::::::::::::::::::::::::
 %==============================================================================
 
+
+# get index from id
+function index = getIndex(id_to_index,id)
+    if ( size(find(id_to_index==id),2)==0 )
+        index = -1
+    else
+        index = find(id_to_index==id);
+    endif
+endfunction
+
+%==============================================================================
+
 # apply non-euclidean perturbation to the state [XR,XL]
 function [XR, XL] = boxPlus(XR, XL, num_poses, num_landmarks, dX)
     global pose_dim;
@@ -110,9 +122,9 @@ function [H,b,chi] = posesLinearSys(XR, XL, ZR, ass_ZR)
     global landmark_dim;
     num_poses = size(XR,3);
     num_landmarks = size(XL,2);
-    system_size = pose_dim*num_poses + landmark_dim*num_landmarks;
-    H = zeros(system_size,system_size);
-    b = zeros(system_size,1);
+    sys_size = pose_dim*num_poses + landmark_dim*num_landmarks;
+    H = zeros(sys_size,sys_size);
+    b = zeros(sys_size,1);
     chi = 0;
     num_measurements = size(ZR,3);
     for (i = 1:num_measurements)
@@ -153,14 +165,14 @@ endfunction
 #       b: vector of the linear system (3*num_poses+2*num_landmarks x 1)
 #       chi: error measure (scalar)
 function [H,b,chi] = landmarkLinearSys(XR,XL,ZL,ass_ZL)
-    global system_size;
+    global sys_size;
     global pose_dim;
     global landmark_dim;
     num_poses = size(XR,3);
     num_landmarks = size(XL,2);
     num_measurements = size(ZL,2);
-    H = zeros(system_size,system_size);
-    b = zeros(system_size,1);
+    H = zeros(sys_size,sys_size);
+    b = zeros(sys_size,1);
     chi = 0;
     for i = 1:num_measurements
         pose_index = ass_ZL(1,i);
@@ -218,15 +230,15 @@ GaussNewtonAlgorithm(XR,XL,ZL,ZR,ass_ZR,ass_ZL,num_iterations,damping_coeff)
     global pose_dim;
     global num_poses;
     global num_landmarks;
-    global system_size;
+    global sys_size;
     chi_l = zeros(1,num_iterations);
     chi_r = zeros(1,num_iterations);
     for (i = 1:num_iterations)
         [Hr, br, chi_r(i)] = poseLinearSys(XR, XL, ZR, ass_ZR);
         [Hl, bl, chi_l(i)] = landmarkLinearSys(XR,XL,ZL,ass_ZL);
         b = br + bl;
-        H = Hr + Hl + eye(system_size,system_size)*damping_coeff;   % damping: not sure if use it or not
-        dX = zeros(system_size,1);
+        H = Hr + Hl + eye(sys_size,sys_size)*damping_coeff;   % damping: not sure if use it or not
+        dX = zeros(sys_size,1);
 	    H((num_poses-1)*pose_dim+1:num_poses*pose_dim, :) = [];
         H(:, (num_poses-1)*pose_dim+1:num_poses*pose_dim) = [];
         b((num_poses-1)*pose_dim+1:num_poses*pose_dim) = [];
