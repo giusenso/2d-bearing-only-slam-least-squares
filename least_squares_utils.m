@@ -212,8 +212,9 @@ endfunction
 #       XL: improved landmark positions matrix (2 x num_landmarks)
 #       chi_r: error measure for poses(scalar)
 #       chi_l: error measure for landmarks(scalar)
+#       H: full H matrix of the system
 
-function [XR, XL, chi_r, chi_l] = ...
+function [XR, XL, chi_r, chi_l,H] = ...
 GaussNewtonAlgorithm(XR,XL,ZL,ZR,ass_ZR,ass_ZL,num_iterations,cut_exec,damp_coeff)
     global pose_dim;
     global num_poses;
@@ -221,14 +222,13 @@ GaussNewtonAlgorithm(XR,XL,ZL,ZR,ass_ZR,ass_ZL,num_iterations,cut_exec,damp_coef
     global sys_size;
     chi_l = zeros(1,num_iterations);
     chi_r = zeros(1,num_iterations);
-    cut_steps = 3;
+    cut_steps = 2;
 
     for (i = 1:num_iterations)
         [Hr, br, chi_r(i)] = posesLinearSys(XR, XL, ZR, ass_ZR);
         [Hl, bl, chi_l(i)] = landmarksLinearSys(XR,XL,ZL,ass_ZL);
         b = br + bl;
         H = Hr + Hl + damp_coeff*eye(sys_size,sys_size);
-        dX = zeros(sys_size,1);
 	    H((num_poses-1)*pose_dim+1:num_poses*pose_dim, :) = [];
         H(:, (num_poses-1)*pose_dim+1:num_poses*pose_dim) = [];
         b((num_poses-1)*pose_dim+1:num_poses*pose_dim) = [];

@@ -9,6 +9,7 @@ close all
 addpath './g2o_wrapper'
 source './utils.m'
 source './least_squares_utils.m'
+source './plot_utils.m'
 
 %==============================================================================
 %:::::::: LOAD GROUND TRUTH :::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -174,18 +175,34 @@ fprintf('Done.\n');
 %==============================================================================
 
 % number of iterations
-global num_it = 20;
+global num_it = 15;
 
-% ENABLE/DISABLE stopping algorithm whenever chi evolution stalls
-global cut_exec = true;
+% ENABLE/DISABLE stop algorithm whenever chi evolution stalls
+global cut_exec = false;
 
 % damping coefficient
 global damp_coeff = 1e-6;
 
 fprintf("\nRun Gauss-Newton algorithm... ");
-[XR, XL, chi_r, chi_l] = ...
+[XR, XL, chi_r, chi_l, H] = ...
 	GaussNewtonAlgorithm(XR_guess,XL_guess,ZL,ZR,ass_ZR,ass_ZL,num_it,cut_exec,damp_coeff);
 fprintf("\nDone.\n");
 
 %==============================================================================
+%:::::::: Plot and save :::::::::::::::::::::::::::::::::::::::::::::::::::::::
+%=============================================================================
 
+mkdir figures;
+
+slam_fig = plotSLAM(XR_truth, XR_guess, XR, XL_truth, XL_guess, XL);
+saveas(slam_fig, "figures/slam", "png");
+
+chi_fig = plotChi(chi_r, chi_l);
+saveas(chi_fig, "figures/chi", "png");
+
+H_fig = plotH(H);
+saveas(H_fig, "figures/H", "png");
+
+fprintf("SLAM results saved in /figures.\n");
+
+%==============================================================================
