@@ -189,7 +189,6 @@ function [H,b,chi] = landmarksLinearSys(XR,XL,ZL,ass_ZL)
 endfunction
 
 
-
 %==============================================================================
 %:::::::::::::::: Least Square for Bearing-only SLAM ::::::::::::::::::::::::::
 %==============================================================================
@@ -205,27 +204,30 @@ endfunction
 #       ass_ZL: relate landmark measurements matrix to
 #               pose measurements and landmark id (2 x num_landmark_meaurements)
 #       num_iterations: number of iterations of the algorithm
-#       damping_coeff: damping coefficient (not sure if use it or not)
+#       cut_exec: boolean that enable/disable stopping the algorithm whenever
+#                 chi evolution stalls
+#       damp_coeff: damping coefficient
 #   output:
 #       XR: improved robot poses matrix(3 x 3 x num_poses)
 #       XL: improved landmark positions matrix (2 x num_landmarks)
 #       chi_r: error measure for poses(scalar)
 #       chi_l: error measure for landmarks(scalar)
-#       ... something else ??
 
 function [XR, XL, chi_r, chi_l] = ...
-GaussNewtonAlgorithm(XR,XL,ZL,ZR,ass_ZR,ass_ZL,num_iterations,damping_coeff)
+GaussNewtonAlgorithm(XR,XL,ZL,ZR,ass_ZR,ass_ZL,num_iterations,cut_exec,damp_coeff)
     global pose_dim;
     global num_poses;
     global num_landmarks;
     global sys_size;
     chi_l = zeros(1,num_iterations);
     chi_r = zeros(1,num_iterations);
+    cut_steps = 3;
+
     for (i = 1:num_iterations)
         [Hr, br, chi_r(i)] = posesLinearSys(XR, XL, ZR, ass_ZR);
         [Hl, bl, chi_l(i)] = landmarksLinearSys(XR,XL,ZL,ass_ZL);
         b = br + bl;
-        H = Hr + Hl + eye(sys_size,sys_size)*damping_coeff;   % damping: not sure if use it or not
+        H = Hr + Hl + damp_coeff*eye(sys_size,sys_size);
         dX = zeros(sys_size,1);
 	    H((num_poses-1)*pose_dim+1:num_poses*pose_dim, :) = [];
         H(:, (num_poses-1)*pose_dim+1:num_poses*pose_dim) = [];
@@ -234,5 +236,16 @@ GaussNewtonAlgorithm(XR,XL,ZL,ZR,ass_ZR,ass_ZL,num_iterations,damping_coeff)
 	    dX = [dX(1:(num_poses-1)*pose_dim); zeros(pose_dim,1); dX((num_poses-1)*pose_dim+1:end)];
         [XR, XL] = boxPlus(XR, XL, num_poses, num_landmarks, dX);
         fprintf("\n|--> iteration %d: chi=%f",i,chi_r(i));
+
+        % if chi evolution stalled cut execution
+        if(cut_exec && i>cut_steps)
+            curr_chi = chi_r(i)+chi_l(i);
+            prev_chi = chi_r(i-cut_steps)+chi_l(i-cut_steps);
+            if( abs(curr_chi-prev_chi)<1e-4 && curr_chi<1 )
+                fprintf("\n|--> chi evolution stalled, cut execution here")
+                break;
+            endif
+        endif
+
     endfor
 endfunction
