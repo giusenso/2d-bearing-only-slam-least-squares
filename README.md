@@ -9,7 +9,7 @@ This software has been tested on
 - Ubuntu 20.04.3 LTS
 - Octave 5.2.0
 
-run `2d-bearing-only-slam-least-squares.m` by running:
+Run the software using:
 ```
 octave-cli
 run("2d-bearing-only-slam-least-squares.m")
