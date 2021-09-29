@@ -11,8 +11,8 @@ This software has been tested on
 
 Run the software using:
 ```
-octave-cli
-run("2d-bearing-only-slam-least-squares.m")
+$ octave-cli
+$ run("2d-bearing-only-slam-least-squares.m")
 ```
 
 ## Results
