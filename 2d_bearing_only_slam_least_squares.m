@@ -95,7 +95,7 @@ for (i = 1:num_transitions)
 endfor
 
 %==============================================================================
-%:::::::: PARSE LANDMARKs :::::::::::::::::::::::::::::::::::::::::::::::::::::
+%:::::::: PARSE LANDMARKS :::::::::::::::::::::::::::::::::::::::::::::::::::::
 %==============================================================================
 
 fprintf('|--> parse landmark edges\n');
@@ -168,3 +168,24 @@ for	(landmark_id = landmarks_ids_list)
 	clear bearing
 endfor
 fprintf('Done.\n');
+
+%==============================================================================
+%:::::::: RUN GAUSS-NEWTON ::::::::::::::::::::::::::::::::::::::::::::::::::::
+%==============================================================================
+
+% number of iterations
+global num_it = 20;
+
+% ENABLE/DISABLE stopping algorithm whenever chi evolution stalls
+global cut_exec = true;
+
+% damping coefficient
+global damp_coeff = 1e-6;
+
+fprintf("\nRun Gauss-Newton algorithm... ");
+[XR, XL, chi_r, chi_l] = ...
+	GaussNewtonAlgorithm(XR_guess,XL_guess,ZL,ZR,ass_ZR,ass_ZL,num_it,cut_exec,damp_coeff);
+fprintf("\nDone.\n");
+
+%==============================================================================
+
