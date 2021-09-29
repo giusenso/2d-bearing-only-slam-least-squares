@@ -1,7 +1,7 @@
 # 2D Bearing-only SLAM with Least Squares
 Simultaneous localization and mapping, or **SLAM**, is the computational problem of constructing a map of an unknown environment while simultaneously estimate the robot state within it. In this particular application, landmarks measurements are assumed to be bearings, while the range measurements are not available; therefore,  landmark positions cannot be computed directly but it has to be estimated by triangulating different bearing measurements.<br>
 Differently from the **Kalman filter based SLAM**, this problem will be addressed with a batch estimation technique: all the available data will be considered at once in order to compute the best solution available. Batch estimation techniques have the advantage that they treat all data with equal importance and find
-optimal estimates for all model parameters given all data. This *maximum a posteriori estimation* is achieved by solving a **Least squares problem** on a non-eulidean space.
+optimal estimates for all model parameters given all data. This *maximum a posteriori estimation* is achieved by solving a **Least squares problem** on a non-eulidean space with **Gauss-Newton algorithm**.
 
 ## How to use it
 
