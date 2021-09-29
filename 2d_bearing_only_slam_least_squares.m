@@ -7,9 +7,9 @@ close all
 %==============================================================================
 
 addpath './g2o_wrapper'
-source './utils.m'
-source './least_squares_utils.m'
-source './plot_utils.m'
+source 'utilities/utils.m'
+source 'utilities/least_squares_utils.m'
+source 'utilities/plot_utils.m'
 
 %==============================================================================
 %:::::::: LOAD GROUND TRUTH :::::::::::::::::::::::::::::::::::::::::::::::::::
