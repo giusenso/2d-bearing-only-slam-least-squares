@@ -4,6 +4,7 @@ close all
 
 %==============================================================================
 %:::::::: IMPORTS :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+%==============================================================================
 
 addpath './g2o_wrapper'
 source './utils.m'
@@ -11,6 +12,7 @@ source './least_squares_utils.m'
 
 %==============================================================================
 %:::::::: LOAD GROUND TRUTH :::::::::::::::::::::::::::::::::::::::::::::::::::
+%==============================================================================
 
 fprintf('\nLoading g2o ground truth data... ');
 
@@ -53,6 +55,7 @@ fprintf('Done.\n');
 
 %==============================================================================
 %:::::::: LOAD INITIAL GUESS ::::::::::::::::::::::::::::::::::::::::::::::::::
+%==============================================================================
 
 fprintf('\nLoading g2o initial guess data... ');
 
@@ -73,10 +76,11 @@ endfor
 fprintf('Done.\n');
 
 %==============================================================================
-%:::::::: PARSE POSES EDGE ::::::::::::::::::::::::::::::::::::::::::::::::::::
+%:::::::: PARSE POSES :::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+%==============================================================================
 
 fprintf('\nParsing data... \n');
-fprintf('|--> parse pose edges... ');
+fprintf('|--> parse pose edges\n');
 
 global ZR = zeros(3,3,num_transitions);
 global ass_ZR = zeros(2,num_transitions);
@@ -89,12 +93,12 @@ for (i = 1:num_transitions)
 	pose_j_index = getIndex(pose_id_2_index,pose_j_id);
 	ass_ZR(:,i) = [pose_i_index pose_j_index]';
 endfor
-fprintf('Done.\n');
 
 %==============================================================================
-%:::::::: PARSE LANDMARK GUESS ::::::::::::::::::::::::::::::::::::::::::::::::
+%:::::::: PARSE LANDMARKs :::::::::::::::::::::::::::::::::::::::::::::::::::::
+%==============================================================================
 
-fprintf('|--> parse landmark edges... ');
+fprintf('|--> parse landmark edges\n');
 
 global ZL = zeros(1,num_measurements);
 global ass_ZL = zeros(2,num_measurements);
@@ -113,4 +117,54 @@ for (i = 1:num_observations)
 	endfor
 endfor
 fprintf('Done.\n');
+
+%==============================================================================
+%:::::::: LINEAR TRIANGULATION ::::::::::::::::::::::::::::::::::::::::::::::::
+%==============================================================================
+
+fprintf('\nLinear triangulation... ');
+
+fprintf('\n|--> compute observations for each landmark\n');
+[out,indices] = sort(ass_ZL(2,:));
+landmarks_ids_list = unique(out);
+observations_per_landmarks = zeros(size(landmarks_ids_list));
+
+% for each landmark get the pair of meaurements with the best parallax
+fprintf('|--> compute best measuraments by parallax\n');
+fprintf("|--> triangulate\n")
+for	(landmark_id = landmarks_ids_list)
+	bearing.pose_id = ass_ZL(1,:)(find(ass_ZL(2,:)==landmark_id));
+	bearing.val = ZL(find(ass_ZL(2,:)==landmark_id));
+	for i = 1:length(bearing.val)
+		bearing.pose(:,i) = t2v(XR_guess(:,:,bearing.pose_id(i)));
+		bearing.val(i) = bearing.val(i) + bearing.pose(3,i);
+		bearing.val(i) = atan2(sin(bearing.val(i)),cos(bearing.val(i)));
+	endfor
+
+	observations_per_landmarks(landmark_id) = sum(out==landmark_id);
+
+	box_minus_matrix = zeros(observations_per_landmarks(landmark_id),observations_per_landmarks(landmark_id));
+	for (i = 1:observations_per_landmarks(landmark_id)-1)
+		for (j = (i+1):observations_per_landmarks(landmark_id))
+			box_minus_matrix(i,j) = boxMinus(bearing.val(i),bearing.val(j));
+			if (box_minus_matrix(i,j) > pi/2)
+				box_minus_matrix(i,j) = pi - box_minus_matrix(i,j);
+			endif
+		endfor
+	endfor
+	[pose0_id, pose1_id] = find(box_minus_matrix==max(max(box_minus_matrix)));
+
+	if(observations_per_landmarks(landmark_id)==1)
+		XL_guess(:,landmark_id) = bearing.pose(1:2,1)+[cos(bearing.pose(3,1)); sin(bearing.pose(3,1))];
+	else
+		p00 = bearing.pose(1:2,pose0_id);
+		phi0 = bearing.val(pose0_id);
+		p01 = p00 + [cos(phi0); sin(phi0)];
+		p10 = bearing.pose(1:2,pose1_id);
+		phi1 = bearing.val(pose1_id);
+		p11 = p10 + [cos(phi1); sin(phi1)];
+		XL_guess(:,landmark_id) = getLinesIntersection(p00,p01, p10,p11);
+	endif
+	clear bearing
+endfor
 fprintf('Done.\n');

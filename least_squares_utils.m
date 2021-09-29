@@ -4,18 +4,6 @@
 %:::::::: UTILITIES for LEAST SQUARES :::::::::::::::::::::::::::::::::::::::::
 %==============================================================================
 
-
-# get index from id
-function index = getIndex(id_to_index,id)
-    if ( size(find(id_to_index==id),2)==0 )
-        index = -1
-    else
-        index = find(id_to_index==id);
-    endif
-endfunction
-
-%==============================================================================
-
 # apply non-euclidean perturbation to the state [XR,XL]
 function [XR, XL] = boxPlus(XR, XL, num_poses, num_landmarks, dX)
     global pose_dim;
@@ -164,7 +152,7 @@ endfunction
 #       H: matrix of the linear system (3*num_poses+2*num_landmarks x 3*num_poses+2*num_landmarks)
 #       b: vector of the linear system (3*num_poses+2*num_landmarks x 1)
 #       chi: error measure (scalar)
-function [H,b,chi] = landmarkLinearSys(XR,XL,ZL,ass_ZL)
+function [H,b,chi] = landmarksLinearSys(XR,XL,ZL,ass_ZL)
     global sys_size;
     global pose_dim;
     global landmark_dim;
@@ -234,8 +222,8 @@ GaussNewtonAlgorithm(XR,XL,ZL,ZR,ass_ZR,ass_ZL,num_iterations,damping_coeff)
     chi_l = zeros(1,num_iterations);
     chi_r = zeros(1,num_iterations);
     for (i = 1:num_iterations)
-        [Hr, br, chi_r(i)] = poseLinearSys(XR, XL, ZR, ass_ZR);
-        [Hl, bl, chi_l(i)] = landmarkLinearSys(XR,XL,ZL,ass_ZL);
+        [Hr, br, chi_r(i)] = posesLinearSys(XR, XL, ZR, ass_ZR);
+        [Hl, bl, chi_l(i)] = landmarksLinearSys(XR,XL,ZL,ass_ZL);
         b = br + bl;
         H = Hr + Hl + eye(sys_size,sys_size)*damping_coeff;   % damping: not sure if use it or not
         dX = zeros(sys_size,1);
